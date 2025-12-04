@@ -35,6 +35,7 @@ export interface RobotState {
   accel: Twist;
   attitude: Twist;
   joints: number[];
+  halted?: boolean;
 }
 
 function init_state() {

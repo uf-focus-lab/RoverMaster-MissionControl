@@ -18,6 +18,9 @@ import HeadingInstrument from "./Instruments/Heading.vue";
     <div id="header">
       <div><span class="logo">RoverMaster</span> &nbsp; Mission Control</div>
       <div style="flex-grow: 1"><!-- SPACER --></div>
+      <div v-if="robot.state.connected && robot.state.halted" class="badge red">
+        HALTED
+      </div>
       <div class="badge" :class="[robot.state.connected ? 'green' : 'red']">
         {{ robot.state.connected ? "CONNECTED" : "DISCONNECTED" }}
       </div>

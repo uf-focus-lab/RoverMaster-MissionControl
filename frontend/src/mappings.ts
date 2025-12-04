@@ -8,7 +8,9 @@
  * 2. from incoming topic to robot states
  * ------------------------------------------------------ */
 
+import { Quaternion, quaternionToEuler } from "./quaternion.ts";
 import { Vector3D, Twist, type RobotState } from "./robot.ts";
+import { degrees } from "./util.ts";
 
 type Stick = { x: number; y: number };
 
@@ -18,9 +20,7 @@ export function gamepadToRobotTopic(
   buttons: number[],
   _: Gamepad, // reserved for checking gamepad type
 ): [string, any][] {
-  const topics: [string, any][] = [],
-    turn_left = buttons[6] ?? 0,
-    turn_right = buttons[7] ?? 0;
+  const topics: [string, any][] = [];
   // Base velocity
   topics.push([
     "vel/set",
@@ -30,7 +30,8 @@ export function gamepadToRobotTopic(
         y: -lStick.x,
       }),
       angular: new Vector3D({
-        z: turn_left - turn_right,
+        z: -rStick.x,
+        y: -rStick.y, // Tilt control, may not be available
       }),
     }),
   ]);
@@ -40,30 +41,14 @@ export function gamepadToRobotTopic(
 type RobotStateUpdater = (data: any, state: RobotState) => void;
 
 export const topicToRobotSatates: Record<string, RobotStateUpdater> = {
-  ["vel/get"](data, state) {},
-  ["platform/pos/get"](data, state) {},
-  ["imu/acc"](data, state) {
-    const { linear, angular } = data;
-    for (const k in linear) {
-      linear[k] *= 9.8 * 2040;
-    }
-    Object.assign(state.accel.linear, linear);
-    Object.assign(state.accel.angular, angular);
-  },
-  ["imu/att"](data, state) {
-    const { angular } = data;
-    angular.x *= 90 / 1000;
-    angular.y *= 90 / 1000;
-    console.log("attitude", angular);
-    Object.assign(state.attitude.angular, angular);
-  },
   ["imu"](data, state) {
-    return console.log("imu", data);
-    const { angular } = data;
-    angular.x *= 90 / 1000;
-    angular.y *= 90 / 1000;
-    console.log("attitude", angular);
-    Object.assign(state.attitude.angular, angular);
+    const attitude = quaternionToEuler(data.orientation as Quaternion);
+    // state.attitude.angular.x = degrees(attitude.roll);
+    state.attitude.angular.y = -degrees(attitude.pitch);
+    state.attitude.angular.z = degrees(attitude.yaw);
   },
-  ["info"](data, state) {},
+  ["halt"](data, state) {
+    state.halted = !!data.data;
+  },
+  // ["info"](data, state) {},
 };
